@@ -10,6 +10,25 @@ This tutorials not show you how to use TRAXXS for generate a trajectory, because
 
 .. code-block:: cpp
 
+   #include <orca/orca.h>
+   #include <gazebo/gazebo.hh>
+   #include <gazebo/common/common.hh>
+   #include <gazebo/physics/physics.hh>
+   #include <gazebo/gazebo_client.hh>
+   #include <sdf/parser_urdf.hh>
+   #include <fstream>
+   #include <thread>
+   #include <iostream>
+   #include <fstream>
+   #include <vector>
+
+   #include <traxxs/tracker/tracker.hpp>
+   #include <traxxs/impl/traxxs_softmotion/traxxs_softmotion.hpp> 
+   #include "samples_helpers.hpp"
+   #include "samples_helpers_cart.hpp"
+   
+   
+   
    template< class T >
    using sptr = std::shared_ptr<T>;
    using namespace traxxs;
@@ -25,7 +44,7 @@ This tutorials not show you how to use TRAXXS for generate a trajectory, because
       path_bounds.j = 200.0 * path_bounds.ddx;
    
       std::vector< std::shared_ptr < path::PathSegment > > segments;   // Declare the  complete segment
-      segments =  createMonSegments(path_bounds);                             // Create the segment via "createMonSegments" function and apply the bounds  
+      segments =  createMonSegments(path_bounds);                             // Create the segment via "createMonSegments"      function and apply the bounds  
     
       //Transform the path to a trajectory
       auto trajectory = std::make_shared< trajectory::Trajectory >();       
