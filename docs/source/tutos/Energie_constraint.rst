@@ -16,6 +16,21 @@ for which we have to set the bounds and the constraint matrix. Those bounds and 
   
   class EnergyConstraint : public GenericConstraint
   {
+    public:
+    
+     
+    void stateInitialize()
+     {
+         // This function initialize and resize the attributes
+            ...
+      }
+   
+    void updateState()
+    {
+        // This function update all the attributes
+        ...
+     }   
+   
     void updateConstraintFunction()
     {
      ...
@@ -23,7 +38,7 @@ for which we have to set the bounds and the constraint matrix. Those bounds and 
      constraintFunction().lowerBound() = ec_min;
      constraintFunction().upperBound() = ec_max;
 
-   }
+    }
     void resize()
     {
      ...
@@ -31,6 +46,15 @@ for which we have to set the bounds and the constraint matrix. Those bounds and 
      constraintFunction().resize(1,dim); // this resize lb,C and ub, C to zero, lb to -inf, ub to +inf
      constraintFunction().constraintMatrix()= C;
     }
+    
+    protected:
+     // Declare the attributes of this class 
+     Eigen::VectorXd  AccelerationDes_;
+     bool indice;
+     string name_of_cstr ;
+     
+     Eigen::MatrixXd Masse_, J_, J_transp_, Lambda_ ;
+     Eigen::VectorXd Xd_curr_, gravity_Torque_, jdotqdot_;
   };
 
 Now, let's see an complete example :
@@ -44,32 +68,58 @@ Now, let's see an complete example :
     {
     }
 
+    
+    
     void setAccelerationDes(Eigen::VectorXd Acc)
     {
       AccelerationDes_ = Acc ;
     }
 
+     void stateInitialize()
+    {
+       const int ndof_ = robot().getNrOfDegreesOfFreedom();
+       Masse_.resize(ndof_,ndof_);
+       J_.resize(6,ndof_);
+       jdotqdot_.resize(6);
+       Lambda_.resize(6,6);
+       gravity_Torque_.resize(ndof_);
+       Xd_curr_.resize(6);
+       AccelerationDes_.resize(6);
+     }
+   
+     void updateState()
+     {
+       const int ndof_ = robot().getNrOfDegreesOfFreedom();
+
+       Masse_ = (robot().getFreeFloatingMassMatrix()).block(6,6,ndof_,ndof_);
+       J_ = (robot().getFrameFreeFloatingJacobian("link_7")).block(0,6,6,ndof_);
+       Lambda_ = (J_*(Masse_.inverse())*J_.transpose()).inverse();
+       Xd_curr_ = robot().getFrameVel("link_7");
+       gravity_Torque_ = (robot().generalizedBiasForces()).segment(6,ndof_);
+       jdotqdot_ = robot().getFrameBiasAcc("link_7");
+     
+     }   
     void updateConstraintFunction()
     {
-      MutexLock lock(mutex);
-      auto world = gazebo::physics::get_world();
-      double sim_step_dt = world->GetPhysicsEngine()->GetRealTimeUpdateRate()*1e-6;
-      const double n_horizon_steps(1);                          
-      double horizon_temps = n_horizon_steps * sim_step_dt ;
+       MutexLock lock(mutex);
+       auto world = gazebo::physics::get_world();
+       double sim_step_dt = world->GetPhysicsEngine()->GetRealTimeUpdateRate()*1e-6;
+       const double n_horizon_steps(1);                          
+       double horizon_temps = n_horizon_steps * sim_step_dt ;
     
-      ...
-      // Compute the current energy of end-effector 
-      double ec_curr = 0.5 * Xd_curr.transpose() * Lambda_ * Xd_curr;
-      double ec_next(0.);
-      ec_next = ec_curr + delta_X.transpose()* Lambda_*(jdotqdot - J*Masse.inverse()*Gravity_torque)[0];
-      ...
-      Eigen::VectorXd ec_max(1),ec_min(1);
-      ec_min << -100 - ec_next ;
+       ...
+       // Compute the current energy of end-effector 
+       double ec_curr = 0.5 * Xd_curr.transpose() * Lambda_ * Xd_curr;
+       double ec_next(0.);
+       ec_next = ec_curr + delta_X.transpose()* Lambda_*(jdotqdot - J*Masse.inverse()*Gravity_torque)[0];
+       ...
+       Eigen::VectorXd ec_max(1),ec_min(1);
+       ec_min << -100 - ec_next ;
 
-      ec_max << ec_lim - ec_next ;
+       ec_max << ec_lim - ec_next ;
 
-      constraintFunction().lowerBound() = ec_min;
-      constraintFunction().upperBound() = ec_max;
+       constraintFunction().lowerBound() = ec_min;
+       constraintFunction().upperBound() = ec_max;
 
      }
 
@@ -108,11 +158,13 @@ In the main() code:
     Eigen::VectorXd Accelerationdes;
     Accelerationdes.resize(6);
     Accelerationdes = cart_acc_pid.getCommand();
+    energycstr.stateInitialize();
+    energycstr.updateState();
     energycstr.setAccelerationDes(Accelerationdes);
     energycstr.resize();
     energycstr.updateConstraintFunction();
-
     ...
+    
     energycstr.insertInProblem();
     energycstr.activate();
 
@@ -122,6 +174,8 @@ In the main() code:
     {
       ...
       energycstr.insertInProblem();
+      energycstr.updateState();
+
       energycstr.update();
 
       ...}
