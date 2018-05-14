@@ -11,17 +11,16 @@ This section give an example to let u know how create a new task. the example he
     void updateAffineFunction()
     {
 
-
-      Eigen::MatrixXd Massetot  ; 			 // Masstot is including the floating base
-      Eigen::VectorXd vel; 		 // Gravity_torque_tot is including the floating base
-
-      vel.setZero(6 + this->robot().getNrOfDegreesOfFreedom()); // initialize a vector of velocity include the floating base.
-      vel.tail(this->robot().getNrOfDegreesOfFreedom()) = this->robot().getJointVel();
-
-      Massetot = this->robot().getFreeFloatingMassMatrix();
+      const unsigned int ndof = robot().getNrOfDegreesOfFreedom();
+      
+      Eigen::VectorXd Gravity_torque;
+      Gravity_torque = this->robot(). generalizedBiasForces();
       // set A and b
-      EuclidianNorm().b() =-2* Massetot.inverse() * (this->robot(). generalizedBiasForces() - vel);
-      EuclidianNorm().A() = 2*Massetot.inverse();
+      Eigen::MatrixXd MatrixId;
+      MatrixId.resize(6+ndof,6+ndof);
+      MatrixId.setIdentity();  	   // Delaration of Matrix E
+      EuclidianNorm().b() = -0.5*Gravity_torque;
+      EuclidianNorm().A() = MatrixId;
     }
 
     };
@@ -79,4 +78,4 @@ Finally, in main() code, we have to declare this class, update it, insert it in 
       return 0
     }
 
-See the complete code with "orca-pu-gazebo.cc" in examples.
+See the complete code in "orca-pu-regularisation.hpp". (https://github.com/ZzhengP/Stage)

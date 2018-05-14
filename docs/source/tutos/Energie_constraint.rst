@@ -185,4 +185,4 @@ In the main() code:
       return 0
     }
 
-You can easily change the type of constraint by changing the dimension of matrix constraint and the constraints.  See the complete code with "orca-pu-gazebo.cc" in examples.
+You can easily change the type of constraint by changing the dimension of matrix constraint and the constraints.  See the complete code in "orca-pu-constraint.hpp". (https://github.com/ZzhengP/Stage)
